@@ -1,0 +1,6 @@
+{
+  "name": "Global & Bangladesh Business News",
+  "description": "Real-time aggregated business, investment, startup, and policy intelligence from Bangladeshi and global media with AI summaries, breaking push notifications, and personalized recommendations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
