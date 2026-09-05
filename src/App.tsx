@@ -10,11 +10,16 @@ import { ClassifiedsSection } from "./components/ClassifiedsSection.js";
 import { ArticleModal } from "./components/ArticleModal.js";
 import { NotificationCenter } from "./components/NotificationCenter.js";
 import { BookmarksModal } from "./components/BookmarksModal.js";
+import { SuggestionPanel } from "./components/SuggestionPanel.js";
+import { StockExchange } from "./components/StockExchange.js";
+import { NotesTool } from "./components/NotesTool.js";
 import { playBreakingChime } from "./utils/audio.js";
 import {
   FALLBACK_NEWS,
   FALLBACK_MARKETS,
   FALLBACK_CLASSIFIEDS,
+  FALLBACK_STOCKS,
+  FALLBACK_OVERVIEWS,
 } from "./data/fallbackData.js";
 import type {
   NewsArticle,
@@ -23,6 +28,9 @@ import type {
   NotificationItem,
   UserPreferences,
   NewsRegion,
+  StockQuote,
+  MarketOverview,
+  ResearchNote,
 } from "./types.js";
 import {
   Sparkles,
@@ -33,6 +41,8 @@ import {
   Radio,
   FileCheck,
   Building,
+  FileText,
+  LineChart,
 } from "lucide-react";
 
 async function fetchJsonSafely<T>(url: string, fallback: T): Promise<T> {
@@ -72,11 +82,49 @@ export default function App() {
   // --- Data State ---
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [markets, setMarkets] = useState<MarketTickerType[]>([]);
+  const [stocks, setStocks] = useState<StockQuote[]>(FALLBACK_STOCKS);
+  const [marketOverviews, setMarketOverviews] = useState<MarketOverview[]>(FALLBACK_OVERVIEWS);
   const [classifieds, setClassifieds] = useState<ClassifiedItem[]>([]);
   const [breakingArticles, setBreakingArticles] = useState<NewsArticle[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // --- Research Notes State ---
+  const [notes, setNotes] = useState<ResearchNote[]>(() => {
+    try {
+      const saved = localStorage.getItem("dispatch_research_notes");
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // fallback
+    }
+    return [
+      {
+        id: "note-init-1",
+        title: "Bangladesh Bank Exposure Limit Revisions",
+        content: "Central bank's proposed caps on single-borrower exposure will mandate portfolio diversification for top commercial banks. Watch Grameenphone and Square Pharma cash-flow resilience.",
+        tags: ["Banking", "Macro", "DSE"],
+        sentiment: "neutral",
+        isPinned: true,
+        stockSymbol: "DSE:BRACBANK",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "note-init-2",
+        title: "South Asian Cross-Border UPI Corridor",
+        content: "India-Nepal digital remittance link demonstrates immediate cost reduction. Potential expansion into Bangladesh and Sri Lanka could expand fintech addressable market.",
+        tags: ["Fintech", "UPI", "Remittance"],
+        sentiment: "bullish",
+        isPinned: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+  });
+  const [isNotesOpen, setIsNotesOpen] = useState<boolean>(false);
+  const [activeNoteArticleContext, setActiveNoteArticleContext] = useState<{ id: string; title: string; source: string; url: string } | undefined>(undefined);
+  const [activeNoteStockContext, setActiveNoteStockContext] = useState<{ symbol: string; exchange: string; price: number } | undefined>(undefined);
 
   // --- Filter & Search State ---
   const [selectedCategory, setSelectedCategory] = useState<ExtendedCategory>("all");
@@ -101,6 +149,15 @@ export default function App() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [pushPermission, setPushPermission] = useState<NotificationPermission | "unsupported">("default");
 
+  // Save notes to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("dispatch_research_notes", JSON.stringify(notes));
+    } catch (e) {
+      // ignore
+    }
+  }, [notes]);
+
   // Save preferences to localStorage
   useEffect(() => {
     try {
@@ -124,11 +181,13 @@ export default function App() {
     setIsLoading(true);
     setError(null);
     try {
-      const [newsData, marketsData, classData, breakData] = await Promise.all([
+      const [newsData, marketsData, classData, breakData, stocksData, overviewsData] = await Promise.all([
         fetchJsonSafely<{ articles: NewsArticle[] }>("/api/news?limit=40", { articles: FALLBACK_NEWS }),
         fetchJsonSafely<MarketTickerType[]>("/api/markets", FALLBACK_MARKETS),
         fetchJsonSafely<ClassifiedItem[]>("/api/classifieds", FALLBACK_CLASSIFIEDS),
         fetchJsonSafely<NewsArticle[]>("/api/news/breaking", FALLBACK_NEWS.filter((a) => a.isBreaking)),
+        fetchJsonSafely<StockQuote[]>("/api/stocks", FALLBACK_STOCKS),
+        fetchJsonSafely<MarketOverview[]>("/api/markets/overview", FALLBACK_OVERVIEWS),
       ]);
 
       const loadedArticles =
@@ -140,6 +199,14 @@ export default function App() {
       const loadedMarkets =
         marketsData && marketsData.length > 0 ? marketsData : FALLBACK_MARKETS;
       setMarkets(loadedMarkets);
+
+      const loadedStocks =
+        stocksData && stocksData.length > 0 ? stocksData : FALLBACK_STOCKS;
+      setStocks(loadedStocks);
+
+      const loadedOverviews =
+        overviewsData && overviewsData.length > 0 ? overviewsData : FALLBACK_OVERVIEWS;
+      setMarketOverviews(loadedOverviews);
 
       const loadedClassifieds =
         classData && classData.length > 0 ? classData : FALLBACK_CLASSIFIEDS;
@@ -167,12 +234,76 @@ export default function App() {
       // Ensure UI always has data even if unhandled error occurred
       setArticles(FALLBACK_NEWS);
       setMarkets(FALLBACK_MARKETS);
+      setStocks(FALLBACK_STOCKS);
+      setMarketOverviews(FALLBACK_OVERVIEWS);
       setClassifieds(FALLBACK_CLASSIFIEDS);
       setBreakingArticles(FALLBACK_NEWS.filter((a) => a.isBreaking));
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  // Handlers for research notes
+  const handleSaveNote = (noteData: Omit<ResearchNote, "id" | "createdAt" | "updatedAt"> & { id?: string }) => {
+    if (noteData.id) {
+      setNotes((prev) =>
+        prev.map((n) =>
+          n.id === noteData.id
+            ? {
+                ...n,
+                ...noteData,
+                updatedAt: new Date().toISOString(),
+              }
+            : n
+        )
+      );
+    } else {
+      const newNote: ResearchNote = {
+        id: `note-${Date.now()}`,
+        title: noteData.title,
+        content: noteData.content,
+        tags: noteData.tags,
+        sentiment: noteData.sentiment,
+        isPinned: noteData.isPinned,
+        articleId: noteData.articleId,
+        articleTitle: noteData.articleTitle,
+        stockSymbol: noteData.stockSymbol,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setNotes((prev) => [newNote, ...prev]);
+    }
+  };
+
+  const handleDeleteNote = (id: string) => {
+    setNotes((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  const handleOpenNoteForArticle = (article: NewsArticle) => {
+    setActiveNoteStockContext(undefined);
+    setActiveNoteArticleContext({
+      id: article.id,
+      title: article.title,
+      source: article.source,
+      url: article.url,
+    });
+    setIsNotesOpen(true);
+  };
+
+  const handleOpenNoteForStock = (stock: StockQuote) => {
+    setActiveNoteArticleContext(undefined);
+    setActiveNoteStockContext({
+      symbol: stock.symbol,
+      exchange: stock.exchange,
+      price: stock.price,
+    });
+    setIsNotesOpen(true);
+  };
+
+  const handleRefreshStocks = async () => {
+    const updated = await fetchJsonSafely<StockQuote[]>("/api/stocks", FALLBACK_STOCKS);
+    setStocks(updated);
+  };
 
   useEffect(() => {
     fetchData();
@@ -375,6 +506,9 @@ export default function App() {
         onSearchChange={setSearchQuery}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
         onOpenBookmarks={() => setIsBookmarksOpen(true)}
+        onOpenNotes={() => setIsNotesOpen(true)}
+        notesCount={notes.length}
+        onOpenStocks={() => setSelectedCategory("stocks")}
         onRefreshFeeds={handleRefreshPipeline}
         isRefreshing={isRefreshing}
         unreadNotificationsCount={unreadCount}
@@ -434,101 +568,140 @@ export default function App() {
           </div>
         )}
 
-        {/* If Classifieds View is selected */}
-        {selectedCategory === "classifieds" ? (
+        {/* View Switcher based on Selected Category */}
+        {selectedCategory === "stocks" ? (
+          <StockExchange
+            stocks={stocks}
+            overviews={marketOverviews}
+            onAddStockNote={handleOpenNoteForStock}
+            onRefreshStocks={handleRefreshStocks}
+          />
+        ) : selectedCategory === "classifieds" ? (
           <ClassifiedsSection items={classifieds} />
         ) : (
-          <>
-            {/* Lead Story (Top of Front Page) */}
-            {heroArticle && !isLoading && (
-              <HeroLead
-                article={heroArticle}
-                onSelect={handleSelectArticle}
-                isBookmarked={preferences.bookmarkedArticles.includes(heroArticle.id)}
-                onToggleBookmark={handleToggleBookmark}
-                onQuickSummarize={handleSelectArticle}
-              />
-            )}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Left Column: Intelligence Dispatches Feed */}
+            <div className="lg:col-span-8 xl:col-span-9 space-y-6">
+              {/* Lead Story (Top of Front Page) */}
+              {heroArticle && !isLoading && (
+                <HeroLead
+                  article={heroArticle}
+                  onSelect={handleSelectArticle}
+                  isBookmarked={preferences.bookmarkedArticles.includes(heroArticle.id)}
+                  onToggleBookmark={handleToggleBookmark}
+                  onQuickSummarize={handleSelectArticle}
+                />
+              )}
 
-            {/* Section Header & Subtitle */}
-            <div className="flex items-center justify-between gap-4 border-b border-[#ded7cb] pb-3 mb-6">
-              <div>
-                <h2 className="font-cinzel text-xl sm:text-2xl font-bold text-neutral-900 flex items-center gap-2">
-                  {selectedCategory === "all" && "All Classified Wire Dispatches"}
-                  {selectedCategory === "for_you" && "Curated For You (Personalized)"}
-                  {selectedCategory === "business" && "Corporate & Industrial Affairs"}
-                  {selectedCategory === "investment" && "Capital Markets & Portfolio Inflows"}
-                  {selectedCategory === "startup" && "Startups, Founders & Venture Capital"}
-                  {selectedCategory === "policy" && "Monetary Policy & Regulatory Gazettes"}
-                </h2>
-                <p className="text-xs text-neutral-500 font-serif-editorial italic mt-0.5">
-                  Showing {displayedArticles.length} aggregated dispatches from verified Bangladeshi & international desks
-                </p>
+              {/* Section Header & Subtitle */}
+              <div className="flex items-center justify-between gap-4 border-b border-[#ded7cb] pb-3 mb-6">
+                <div>
+                  <h2 className="font-cinzel text-xl sm:text-2xl font-bold text-neutral-900 flex items-center gap-2">
+                    {selectedCategory === "all" && "All Classified Wire Dispatches"}
+                    {selectedCategory === "for_you" && "Curated For You (Personalized)"}
+                    {selectedCategory === "business" && "Corporate & Industrial Affairs"}
+                    {selectedCategory === "investment" && "Capital Markets & Portfolio Inflows"}
+                    {selectedCategory === "startup" && "Startups, Founders & Venture Capital"}
+                    {selectedCategory === "policy" && "Monetary Policy & Regulatory Gazettes"}
+                  </h2>
+                  <p className="text-xs text-neutral-500 font-serif-editorial italic mt-0.5">
+                    Showing {displayedArticles.length} aggregated dispatches from verified South Asian & international desks
+                  </p>
+                </div>
+
+                {selectedCategory === "for_you" && (
+                  <div className="hidden sm:flex items-center gap-1.5 text-xs text-amber-900 bg-amber-100/70 px-3 py-1 rounded border border-amber-300">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    <span className="font-semibold">Scored via Gemini Match Engine</span>
+                  </div>
+                )}
               </div>
 
-              {selectedCategory === "for_you" && (
-                <div className="hidden sm:flex items-center gap-1.5 text-xs text-amber-900 bg-amber-100/70 px-3 py-1 rounded border border-amber-300">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                  <span className="font-semibold">Scored via Gemini Match Engine</span>
+              {/* Loading State */}
+              {isLoading && (
+                <div className="py-20 flex flex-col items-center justify-center text-neutral-500 gap-3">
+                  <RefreshCw className="w-8 h-8 animate-spin text-amber-700" />
+                  <p className="text-sm font-medium">
+                    Aggregating live wires from South Asia and global capital media...
+                  </p>
+                </div>
+              )}
+
+              {/* Empty State */}
+              {!isLoading && displayedArticles.length === 0 && (
+                <div className="py-16 text-center text-neutral-500 bg-white border border-[#e5dfd4] rounded-lg p-8">
+                  <p className="text-base font-semibold text-neutral-800">
+                    No intelligence reports match your current filter.
+                  </p>
+                  <p className="text-xs text-neutral-500 mt-1">
+                    Try clearing your search query or switching to "All Intelligence".
+                  </p>
+                  <button
+                    onClick={() => {
+                      setSearchQuery("");
+                      setSelectedCategory("all");
+                      setSelectedRegion("all");
+                    }}
+                    className="mt-4 px-4 py-2 bg-[#1b1916] text-white text-xs font-semibold rounded hover:bg-neutral-800"
+                  >
+                    Reset All Filters
+                  </button>
+                </div>
+              )}
+
+              {/* Editorial Articles Grid */}
+              {!isLoading && gridArticles.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {gridArticles.map((article) => (
+                    <ArticleCard
+                      key={article.id}
+                      article={article}
+                      onSelect={handleSelectArticle}
+                      isBookmarked={preferences.bookmarkedArticles.includes(article.id)}
+                      onToggleBookmark={handleToggleBookmark}
+                      onQuickSummarize={handleSelectArticle}
+                      matchScore={
+                        selectedCategory === "for_you"
+                          ? calculatePersonalizedScore(article)
+                          : undefined
+                      }
+                    />
+                  ))}
                 </div>
               )}
             </div>
 
-            {/* Loading State */}
-            {isLoading && (
-              <div className="py-20 flex flex-col items-center justify-center text-neutral-500 gap-3">
-                <RefreshCw className="w-8 h-8 animate-spin text-amber-700" />
-                <p className="text-sm font-medium">
-                  Aggregating live wires from Bangladesh and global media...
-                </p>
-              </div>
-            )}
-
-            {/* Empty State */}
-            {!isLoading && displayedArticles.length === 0 && (
-              <div className="py-16 text-center text-neutral-500 bg-white border border-[#e5dfd4] rounded-lg p-8">
-                <p className="text-base font-semibold text-neutral-800">
-                  No intelligence reports match your current filter.
-                </p>
-                <p className="text-xs text-neutral-500 mt-1">
-                  Try clearing your search query or switching to "All Intelligence".
-                </p>
-                <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSelectedCategory("all");
-                    setSelectedRegion("all");
-                  }}
-                  className="mt-4 px-4 py-2 bg-[#1b1916] text-white text-xs font-semibold rounded hover:bg-neutral-800"
-                >
-                  Reset All Filters
-                </button>
-              </div>
-            )}
-
-            {/* Editorial Articles Grid */}
-            {!isLoading && gridArticles.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {gridArticles.map((article) => (
-                  <ArticleCard
-                    key={article.id}
-                    article={article}
-                    onSelect={handleSelectArticle}
-                    isBookmarked={preferences.bookmarkedArticles.includes(article.id)}
-                    onToggleBookmark={handleToggleBookmark}
-                    onQuickSummarize={handleSelectArticle}
-                    matchScore={
-                      selectedCategory === "for_you"
-                        ? calculatePersonalizedScore(article)
-                        : undefined
-                    }
-                  />
-                ))}
-              </div>
-            )}
-          </>
+            {/* Right Column: Editorial Side Suggestion Panel */}
+            <div className="lg:col-span-4 xl:col-span-3">
+              <SuggestionPanel
+                articles={articles}
+                onSelectArticle={handleSelectArticle}
+                onFilterByTag={(tag) => setSearchQuery(tag)}
+                onSelectRegion={setSelectedRegion}
+                currentRegion={selectedRegion}
+                followedTopics={preferences.followedTopics}
+                className="sticky top-20"
+              />
+            </div>
+          </div>
         )}
       </main>
+
+      {/* Floating Analyst Research Desk Trigger */}
+      <button
+        id="floating-notes-btn"
+        onClick={() => setIsNotesOpen(true)}
+        title="Open Analyst Research Desk"
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 bg-neutral-900 hover:bg-neutral-800 text-white px-4 py-2.5 rounded-full shadow-xl border border-neutral-700 transition-all hover:scale-105 group"
+      >
+        <FileText className="w-4 h-4 text-amber-400 group-hover:rotate-6 transition-transform" />
+        <span className="text-xs font-semibold">Research Desk</span>
+        {notes.length > 0 && (
+          <span className="bg-amber-400 text-neutral-950 font-mono text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+            {notes.length}
+          </span>
+        )}
+      </button>
 
       {/* Modals and Drawers */}
       <ArticleModal
@@ -540,6 +713,21 @@ export default function App() {
             : false
         }
         onToggleBookmark={handleToggleBookmark}
+        onAddNote={handleOpenNoteForArticle}
+      />
+
+      <NotesTool
+        isOpen={isNotesOpen}
+        onClose={() => {
+          setIsNotesOpen(false);
+          setActiveNoteArticleContext(undefined);
+          setActiveNoteStockContext(undefined);
+        }}
+        notes={notes}
+        onSaveNote={handleSaveNote}
+        onDeleteNote={handleDeleteNote}
+        initialArticleContext={activeNoteArticleContext}
+        initialStockContext={activeNoteStockContext}
       />
 
       <NotificationCenter

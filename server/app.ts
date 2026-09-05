@@ -6,6 +6,8 @@ import {
   runIngestionPipeline,
   LIVE_MARKETS,
   CLASSIFIED_ITEMS,
+  SOUTH_ASIAN_STOCKS,
+  MARKET_OVERVIEWS,
 } from "./pipeline.js";
 import { generateArticleSummary, askArticleQuestion } from "./gemini.js";
 
@@ -108,6 +110,21 @@ export function createExpressApp() {
   // Live financial markets ticker
   app.get("/api/markets", (req, res) => {
     res.json(LIVE_MARKETS);
+  });
+
+  // Real-time South Asian stock exchange equities
+  app.get("/api/stocks", (req, res) => {
+    const exchange = req.query.exchange as string | undefined;
+    let list = [...SOUTH_ASIAN_STOCKS];
+    if (exchange && exchange !== "ALL") {
+      list = list.filter((s) => s.exchange.toUpperCase() === exchange.toUpperCase());
+    }
+    res.json(list);
+  });
+
+  // Real-time market exchange overviews
+  app.get("/api/markets/overview", (req, res) => {
+    res.json(MARKET_OVERVIEWS);
   });
 
   // Business classifieds, tenders & regulatory gazettes

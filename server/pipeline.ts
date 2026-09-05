@@ -1,5 +1,12 @@
 import { XMLParser } from "fast-xml-parser";
-import type { NewsArticle, MarketTicker, ClassifiedItem } from "../src/types.js";
+import type {
+  NewsArticle,
+  MarketTicker,
+  ClassifiedItem,
+  NewsRegion,
+  StockQuote,
+  MarketOverview,
+} from "../src/types.js";
 
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
@@ -12,17 +19,21 @@ interface FeedSource {
   id: string;
   name: string;
   url: string;
-  region: "bangladesh" | "global";
+  region: NewsRegion;
+  country: string;
+  countryCode: string;
   defaultCategory: "business" | "investment" | "startup" | "policy";
 }
 
 const FEED_SOURCES: FeedSource[] = [
-  // Bangladeshi News Media
+  // --- Bangladesh News Media ---
   {
     id: "fe_bd",
     name: "The Financial Express (BD)",
     url: "https://thefinancialexpress.com.bd/feed",
     region: "bangladesh",
+    country: "Bangladesh",
+    countryCode: "BD",
     defaultCategory: "business",
   },
   {
@@ -30,20 +41,8 @@ const FEED_SOURCES: FeedSource[] = [
     name: "The Daily Star Business",
     url: "https://www.thedailystar.net/business/rss.xml",
     region: "bangladesh",
-    defaultCategory: "business",
-  },
-  {
-    id: "tbs_news",
-    name: "The Business Standard (TBS)",
-    url: "https://www.tbsnews.net/feed/business.xml",
-    region: "bangladesh",
-    defaultCategory: "business",
-  },
-  {
-    id: "dt_biz",
-    name: "Dhaka Tribune Business",
-    url: "https://www.dhakatribune.com/articles/business/rss.xml",
-    region: "bangladesh",
+    country: "Bangladesh",
+    countryCode: "BD",
     defaultCategory: "business",
   },
   {
@@ -51,15 +50,108 @@ const FEED_SOURCES: FeedSource[] = [
     name: "Prothom Alo English",
     url: "https://en.prothomalo.com/feed",
     region: "bangladesh",
+    country: "Bangladesh",
+    countryCode: "BD",
     defaultCategory: "policy",
   },
+  {
+    id: "dt_biz",
+    name: "Dhaka Tribune Business",
+    url: "https://www.dhakatribune.com/articles/business/rss.xml",
+    region: "bangladesh",
+    country: "Bangladesh",
+    countryCode: "BD",
+    defaultCategory: "business",
+  },
 
-  // Global News Media
+  // --- India News Media ---
+  {
+    id: "mint_in",
+    name: "Mint / Livemint (India)",
+    url: "https://www.livemint.com/rss/news",
+    region: "india",
+    country: "India",
+    countryCode: "IN",
+    defaultCategory: "business",
+  },
+  {
+    id: "et_markets",
+    name: "The Economic Times Markets",
+    url: "https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms",
+    region: "india",
+    country: "India",
+    countryCode: "IN",
+    defaultCategory: "investment",
+  },
+  {
+    id: "bs_policy",
+    name: "Business Standard Policy & Economy",
+    url: "https://www.business-standard.com/rss/economy-policy-103.rss",
+    region: "india",
+    country: "India",
+    countryCode: "IN",
+    defaultCategory: "policy",
+  },
+  {
+    id: "ndtv_profit",
+    name: "NDTV Profit (India)",
+    url: "https://feeds.feedburner.com/ndtvprofit-latest",
+    region: "india",
+    country: "India",
+    countryCode: "IN",
+    defaultCategory: "investment",
+  },
+
+  // --- Pakistan News Media ---
+  {
+    id: "tribune_pk",
+    name: "The Express Tribune Business (PK)",
+    url: "https://tribune.com.pk/feed/business",
+    region: "pakistan",
+    country: "Pakistan",
+    countryCode: "PK",
+    defaultCategory: "business",
+  },
+  {
+    id: "brecorder_pk",
+    name: "Business Recorder (Pakistan)",
+    url: "https://www.brecorder.com/feeds/latest-news",
+    region: "pakistan",
+    country: "Pakistan",
+    countryCode: "PK",
+    defaultCategory: "investment",
+  },
+
+  // --- Sri Lanka News Media ---
+  {
+    id: "the_island_sl",
+    name: "The Island Business (Sri Lanka)",
+    url: "https://island.lk/category/business/feed/",
+    region: "sri_lanka",
+    country: "Sri Lanka",
+    countryCode: "LK",
+    defaultCategory: "business",
+  },
+
+  // --- Nepal News Media ---
+  {
+    id: "onlinekhabar_np",
+    name: "OnlineKhabar Business (Nepal)",
+    url: "https://english.onlinekhabar.com/category/business/feed",
+    region: "nepal",
+    country: "Nepal",
+    countryCode: "NP",
+    defaultCategory: "business",
+  },
+
+  // --- Global News Media ---
   {
     id: "techcrunch_startups",
     name: "TechCrunch Startups & VC",
     url: "https://techcrunch.com/category/startups/feed/",
     region: "global",
+    country: "Global",
+    countryCode: "GL",
     defaultCategory: "startup",
   },
   {
@@ -67,6 +159,8 @@ const FEED_SOURCES: FeedSource[] = [
     name: "CNBC International Markets",
     url: "https://search.cnbc.com/rs/search/view.html?partnerId=2000&keywords=business&format=rss",
     region: "global",
+    country: "Global",
+    countryCode: "GL",
     defaultCategory: "investment",
   },
   {
@@ -74,6 +168,8 @@ const FEED_SOURCES: FeedSource[] = [
     name: "BBC World Business",
     url: "https://feeds.bbci.co.uk/news/business/rss.xml",
     region: "global",
+    country: "Global",
+    countryCode: "GL",
     defaultCategory: "business",
   },
 ];
@@ -242,14 +338,298 @@ const CURATED_NEWS: NewsArticle[] = [
   },
 ];
 
+export const SOUTH_ASIAN_STOCKS: StockQuote[] = [
+  // Dhaka Stock Exchange (Bangladesh)
+  {
+    symbol: "SQURPHARMA",
+    name: "Square Pharmaceuticals PLC",
+    price: 218.4,
+    currency: "BDT",
+    change: 3.8,
+    changePercent: 1.77,
+    volume: "1.42M",
+    high: 221.0,
+    low: 215.5,
+    exchange: "DSE",
+    sector: "Pharmaceuticals",
+    isPositive: true,
+    sparkline: [214.5, 215.2, 217.0, 216.5, 218.4],
+  },
+  {
+    symbol: "GP",
+    name: "Grameenphone Ltd",
+    price: 342.1,
+    currency: "BDT",
+    change: 5.6,
+    changePercent: 1.66,
+    volume: "980K",
+    high: 345.0,
+    low: 338.0,
+    exchange: "DSE",
+    sector: "Telecommunication",
+    isPositive: true,
+    sparkline: [335.0, 337.5, 340.0, 339.2, 342.1],
+  },
+  {
+    symbol: "BRACBANK",
+    name: "BRAC Bank PLC",
+    price: 58.7,
+    currency: "BDT",
+    change: 1.4,
+    changePercent: 2.44,
+    volume: "3.10M",
+    high: 59.2,
+    low: 57.0,
+    exchange: "DSE",
+    sector: "Banking",
+    isPositive: true,
+    sparkline: [56.2, 56.8, 57.5, 58.1, 58.7],
+  },
+  {
+    symbol: "BXPHARMA",
+    name: "Beximco Pharmaceuticals",
+    price: 138.2,
+    currency: "BDT",
+    change: -1.5,
+    changePercent: -1.07,
+    volume: "850K",
+    high: 140.5,
+    low: 137.5,
+    exchange: "DSE",
+    sector: "Pharmaceuticals",
+    isPositive: false,
+    sparkline: [141.0, 140.2, 139.0, 138.5, 138.2],
+  },
+  {
+    symbol: "WALTONHIL",
+    name: "Walton Hi-Tech Industries",
+    price: 685.0,
+    currency: "BDT",
+    change: 12.0,
+    changePercent: 1.78,
+    volume: "320K",
+    high: 690.0,
+    low: 678.0,
+    exchange: "DSE",
+    sector: "Engineering & Electronics",
+    isPositive: true,
+    sparkline: [670.0, 674.0, 679.0, 681.0, 685.0],
+  },
+
+  // Bombay / National Stock Exchange (India)
+  {
+    symbol: "RELIANCE",
+    name: "Reliance Industries Ltd",
+    price: 3012.5,
+    currency: "INR",
+    change: 28.4,
+    changePercent: 0.95,
+    volume: "6.8M",
+    high: 3025.0,
+    low: 2985.0,
+    exchange: "BSE",
+    sector: "Energy & Conglomerate",
+    isPositive: true,
+    sparkline: [2970, 2985, 2995, 3010, 3012.5],
+  },
+  {
+    symbol: "TCS",
+    name: "Tata Consultancy Services",
+    price: 4320.0,
+    currency: "INR",
+    change: 45.2,
+    changePercent: 1.06,
+    volume: "2.1M",
+    high: 4340.0,
+    low: 4280.0,
+    exchange: "NSE",
+    sector: "Information Technology",
+    isPositive: true,
+    sparkline: [4260, 4285, 4300, 4315, 4320],
+  },
+  {
+    symbol: "HDFCBANK",
+    name: "HDFC Bank Ltd",
+    price: 1685.0,
+    currency: "INR",
+    change: -8.5,
+    changePercent: -0.5,
+    volume: "12.4M",
+    high: 1700.0,
+    low: 1680.0,
+    exchange: "NSE",
+    sector: "Banking & Financial Services",
+    isPositive: false,
+    sparkline: [1702, 1695, 1690, 1688, 1685],
+  },
+
+  // Pakistan Stock Exchange (PSX)
+  {
+    symbol: "OGDC",
+    name: "Oil & Gas Development Co",
+    price: 142.8,
+    currency: "PKR",
+    change: 3.2,
+    changePercent: 2.29,
+    volume: "8.4M",
+    high: 144.5,
+    low: 139.8,
+    exchange: "PSX",
+    sector: "Oil & Gas Exploration",
+    isPositive: true,
+    sparkline: [138.5, 140.0, 141.2, 142.0, 142.8],
+  },
+  {
+    symbol: "LUCK",
+    name: "Lucky Cement Ltd",
+    price: 885.0,
+    currency: "PKR",
+    change: 14.5,
+    changePercent: 1.67,
+    volume: "1.2M",
+    high: 890.0,
+    low: 872.0,
+    exchange: "PSX",
+    sector: "Cement & Infrastructure",
+    isPositive: true,
+    sparkline: [865, 870, 878, 882, 885],
+  },
+
+  // Colombo Stock Exchange (Sri Lanka)
+  {
+    symbol: "JKH",
+    name: "John Keells Holdings PLC",
+    price: 198.5,
+    currency: "LKR",
+    change: 2.5,
+    changePercent: 1.28,
+    volume: "2.8M",
+    high: 200.0,
+    low: 195.0,
+    exchange: "CSE",
+    sector: "Diversified Conglomerates",
+    isPositive: true,
+    sparkline: [194, 195.5, 197, 197.8, 198.5],
+  },
+
+  // Nepal Stock Exchange (NEPSE)
+  {
+    symbol: "NABIL",
+    name: "Nabil Bank Limited",
+    price: 540.0,
+    currency: "NPR",
+    change: 8.0,
+    changePercent: 1.5,
+    volume: "450K",
+    high: 545.0,
+    low: 532.0,
+    exchange: "NEPSE",
+    sector: "Commercial Banking",
+    isPositive: true,
+    sparkline: [530, 532, 536, 538, 540],
+  },
+];
+
+export const MARKET_OVERVIEWS: MarketOverview[] = [
+  {
+    exchange: "Dhaka Stock Exchange",
+    code: "DSE",
+    country: "Bangladesh",
+    countryFlag: "🇧🇩",
+    indexName: "DSEX Benchmark Index",
+    indexValue: "5,420.8",
+    change: "+1.58%",
+    changePoints: "+84.6 pts",
+    isPositive: true,
+    turnover: "BDT 842.6 Crore ($70M)",
+    status: "OPEN",
+    tradingHours: "10:00 - 14:30 BST",
+  },
+  {
+    exchange: "Bombay Stock Exchange",
+    code: "BSE",
+    country: "India",
+    countryFlag: "🇮🇳",
+    indexName: "S&P BSE SENSEX",
+    indexValue: "82,365.7",
+    change: "+0.42%",
+    changePoints: "+342.1 pts",
+    isPositive: true,
+    turnover: "INR 6,420 Crore ($770M)",
+    status: "OPEN",
+    tradingHours: "09:15 - 15:30 IST",
+  },
+  {
+    exchange: "National Stock Exchange of India",
+    code: "NSE",
+    country: "India",
+    countryFlag: "🇮🇳",
+    indexName: "NIFTY 50",
+    indexValue: "25,235.9",
+    change: "+0.38%",
+    changePoints: "+95.8 pts",
+    isPositive: true,
+    turnover: "INR 84,200 Crore ($10.1B)",
+    status: "OPEN",
+    tradingHours: "09:15 - 15:30 IST",
+  },
+  {
+    exchange: "Pakistan Stock Exchange",
+    code: "PSX",
+    country: "Pakistan",
+    countryFlag: "🇵🇰",
+    indexName: "KSE-100 Index",
+    indexValue: "78,920.4",
+    change: "+1.14%",
+    changePoints: "+890.2 pts",
+    isPositive: true,
+    turnover: "PKR 18.5 Billion ($66M)",
+    status: "OPEN",
+    tradingHours: "09:30 - 15:30 PKT",
+  },
+  {
+    exchange: "Colombo Stock Exchange",
+    code: "CSE",
+    country: "Sri Lanka",
+    countryFlag: "🇱🇰",
+    indexName: "All Share Price Index (ASPI)",
+    indexValue: "12,180.5",
+    change: "+0.85%",
+    changePoints: "+102.4 pts",
+    isPositive: true,
+    turnover: "LKR 2.4 Billion ($8M)",
+    status: "OPEN",
+    tradingHours: "09:30 - 14:30 SLST",
+  },
+  {
+    exchange: "Nepal Stock Exchange",
+    code: "NEPSE",
+    country: "Nepal",
+    countryFlag: "🇳🇵",
+    indexName: "NEPSE Index",
+    indexValue: "2,684.2",
+    change: "-0.24%",
+    changePoints: "-6.5 pts",
+    isPositive: false,
+    turnover: "NPR 4.8 Billion ($36M)",
+    status: "CLOSED",
+    tradingHours: "11:00 - 15:00 NPT",
+  },
+];
+
 export const LIVE_MARKETS: MarketTicker[] = [
-  { symbol: "DSEX", name: "Dhaka Stock Exchange", value: "5,420.8", change: "+1.58%", isPositive: true, category: "index" },
-  { symbol: "USD/BDT", name: "US Dollar / BDT", value: "121.40", change: "-0.15%", isPositive: true, category: "currency" },
-  { symbol: "EUR/BDT", name: "Euro / BDT", value: "131.85", change: "+0.22%", isPositive: false, category: "currency" },
-  { symbol: "S&P 500", name: "S&P 500 Index", value: "5,842.1", change: "+0.45%", isPositive: true, category: "index" },
+  { symbol: "DSEX", name: "Dhaka Stock Exchange", value: "5,420.8", change: "+1.58%", isPositive: true, category: "index", exchange: "DSE", country: "Bangladesh" },
+  { symbol: "SENSEX", name: "BSE SENSEX (India)", value: "82,365.7", change: "+0.42%", isPositive: true, category: "index", exchange: "BSE", country: "India" },
+  { symbol: "NIFTY 50", name: "NSE NIFTY 50", value: "25,235.9", change: "+0.38%", isPositive: true, category: "index", exchange: "NSE", country: "India" },
+  { symbol: "KSE-100", name: "PSX KSE-100 (Pakistan)", value: "78,920.4", change: "+1.14%", isPositive: true, category: "index", exchange: "PSX", country: "Pakistan" },
+  { symbol: "CSE ASPI", name: "Colombo Stock Exchange", value: "12,180.5", change: "+0.85%", isPositive: true, category: "index", exchange: "CSE", country: "Sri Lanka" },
+  { symbol: "NEPSE", name: "Nepal Stock Exchange", value: "2,684.2", change: "-0.24%", isPositive: false, category: "index", exchange: "NEPSE", country: "Nepal" },
+  { symbol: "USD/BDT", name: "US Dollar / BDT", value: "121.40", change: "-0.15%", isPositive: true, category: "currency", country: "Bangladesh" },
+  { symbol: "USD/INR", name: "US Dollar / INR", value: "83.92", change: "+0.08%", isPositive: false, category: "currency", country: "India" },
+  { symbol: "S&P 500", name: "S&P 500 Index (US)", value: "5,842.1", change: "+0.45%", isPositive: true, category: "index", country: "Global" },
   { symbol: "BRENT", name: "Brent Crude Oil", value: "$74.20/bbl", change: "-1.12%", isPositive: false, category: "commodity" },
   { symbol: "GOLD", name: "Gold Spot / Oz", value: "$2,684.50", change: "+0.68%", isPositive: true, category: "commodity" },
-  { symbol: "REMIT_FLOW", name: "BD Monthly Remittance", value: "$2.24B", change: "+14.2%", isPositive: true, category: "index" },
+  { symbol: "REMIT_FLOW", name: "BD Monthly Remittance", value: "$2.24B", change: "+14.2%", isPositive: true, category: "index", country: "Bangladesh" },
 ];
 
 export const CLASSIFIED_ITEMS: ClassifiedItem[] = [
@@ -299,6 +679,24 @@ export const CLASSIFIED_ITEMS: ClassifiedItem[] = [
 let aggregatedNews: NewsArticle[] = [...CURATED_NEWS];
 let lastIngestionTime: number = 0;
 
+function extractTextValue(val: any): string {
+  if (!val) return "";
+  if (typeof val === "string") return val;
+  if (typeof val === "number") return String(val);
+  if (typeof val === "object") {
+    if (val["#text"]) return extractTextValue(val["#text"]);
+    if (val["a"]) return extractTextValue(val["a"]);
+    if (val["_"]) return extractTextValue(val["_"]);
+    for (const k of Object.keys(val)) {
+      if (!k.startsWith("@_")) {
+        const nested = extractTextValue(val[k]);
+        if (nested) return nested;
+      }
+    }
+  }
+  return "";
+}
+
 function cleanHtml(text: string): string {
   if (!text) return "";
   return text
@@ -309,6 +707,12 @@ function cleanHtml(text: string): string {
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&rsquo;/g, "'")
+    .replace(/&lsquo;/g, "'")
+    .replace(/&rdquo;/g, '"')
+    .replace(/&ldquo;/g, '"')
+    .replace(/&mdash;/g, "—")
+    .replace(/&ndash;/g, "–")
     .replace(/&nbsp;/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -339,6 +743,8 @@ function determineCategory(
   if (
     text.includes("central bank") ||
     text.includes("bangladesh bank") ||
+    text.includes("rbi") ||
+    text.includes("state bank of pakistan") ||
     text.includes("nbr") ||
     text.includes("tax") ||
     text.includes("policy") ||
@@ -351,6 +757,7 @@ function determineCategory(
     text.includes("imf") ||
     text.includes("world bank") ||
     text.includes("bsec") ||
+    text.includes("sebi") ||
     text.includes("compliance")
   ) {
     return "policy";
@@ -361,6 +768,11 @@ function determineCategory(
     text.includes("shares") ||
     text.includes("dsex") ||
     text.includes("dse") ||
+    text.includes("sensex") ||
+    text.includes("nifty") ||
+    text.includes("kse") ||
+    text.includes("aspi") ||
+    text.includes("nepse") ||
     text.includes("equity") ||
     text.includes("bond") ||
     text.includes("ipo") ||
@@ -385,8 +797,9 @@ function extractImage(item: any): string | undefined {
   if (item["enclosure"] && item["enclosure"]["@_url"]) {
     return item["enclosure"]["@_url"];
   }
-  const desc = item.description || item.content || "";
-  const match = typeof desc === "string" ? desc.match(/src=["'](.*?)["']/i) : null;
+  const desc = item.description || item.content || item["content:encoded"] || "";
+  const descStr = typeof desc === "string" ? desc : extractTextValue(desc);
+  const match = descStr.match(/src=["'](.*?)["']/i);
   if (match && match[1] && match[1].startsWith("http")) {
     return match[1];
   }
@@ -428,13 +841,15 @@ export async function fetchFeed(source: FeedSource): Promise<NewsArticle[]> {
 
     const results: NewsArticle[] = [];
 
-    for (const item of items.slice(0, 10)) {
-      const titleRaw = item.title ? (typeof item.title === "object" ? item.title["#text"] || "" : item.title) : "";
+    for (const item of items.slice(0, 15)) {
+      const titleRaw = extractTextValue(item.title);
       const title = cleanHtml(titleRaw);
-      if (!title || title.length < 15) continue;
+      if (!title || title.length < 12) continue;
 
-      const descRaw = item.description || item.summary || item["content:encoded"] || "";
-      const desc = cleanHtml(typeof descRaw === "object" ? descRaw["#text"] || "" : descRaw);
+      const descRaw = extractTextValue(
+        item.description || item.summary || item["content:encoded"] || item.content || ""
+      );
+      const desc = cleanHtml(descRaw);
 
       let link = item.link;
       if (typeof link === "object") {
@@ -443,31 +858,47 @@ export async function fetchFeed(source: FeedSource): Promise<NewsArticle[]> {
 
       const pubDate = item.pubDate || item.published || item.updated || new Date().toISOString();
       const category = determineCategory(title, desc, source.defaultCategory);
-      const imageUrl = extractImage(item) || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80";
+      const imageUrl =
+        extractImage(item) ||
+        (source.region === "bangladesh"
+          ? "https://images.unsplash.com/photo-1541354329998-f4d9a9f9297f?auto=format&fit=crop&w=1200&q=80"
+          : source.region === "india"
+          ? "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=1200&q=80"
+          : source.region === "pakistan"
+          ? "https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=1200&q=80"
+          : "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80");
 
       const tags = [
-        source.region === "bangladesh" ? "Bangladesh" : "Global",
+        source.country,
         category.toUpperCase(),
       ];
+      if (source.region !== "global") tags.push("South Asia");
       if (title.toLowerCase().includes("bank")) tags.push("Banking");
       if (title.toLowerCase().includes("tech")) tags.push("Technology");
       if (title.toLowerCase().includes("export")) tags.push("Trade");
+      if (title.toLowerCase().includes("rate") || title.toLowerCase().includes("inflation")) tags.push("Macro");
 
       const wordCount = (title + " " + desc).split(" ").length;
 
       results.push({
         id: `rss-${source.id}-${Math.abs(hashString(title))}`,
         title,
-        summary: desc.length > 220 ? desc.slice(0, 220) + "..." : desc,
+        summary: desc.length > 220 ? desc.slice(0, 220) + "..." : desc || title,
         contentSnippet: desc || title,
         url: link || "https://thefinancialexpress.com.bd",
         source: source.name,
         sourceCategory: source.region,
+        country: source.country,
+        countryCode: source.countryCode,
         category,
         publishedAt: new Date(pubDate).toISOString(),
         imageUrl,
         author: source.name,
-        isBreaking: title.toLowerCase().includes("breaking") || title.toLowerCase().includes("urgent") || title.toLowerCase().includes("surges"),
+        isBreaking:
+          title.toLowerCase().includes("breaking") ||
+          title.toLowerCase().includes("urgent") ||
+          title.toLowerCase().includes("surges") ||
+          title.toLowerCase().includes("all-time high"),
         tags,
         readTimeMinutes: Math.max(2, Math.ceil(wordCount / 50)),
       });
@@ -475,7 +906,6 @@ export async function fetchFeed(source: FeedSource): Promise<NewsArticle[]> {
 
     return results;
   } catch (err) {
-    // Network or parse issue on specific feed
     return [];
   }
 }
@@ -554,6 +984,7 @@ export async function runIngestionPipeline(force = false): Promise<{
 export function getArticles(params: {
   category?: string;
   region?: string;
+  country?: string;
   search?: string;
   isBreaking?: boolean;
   limit?: number;
@@ -567,7 +998,17 @@ export function getArticles(params: {
   }
 
   if (params.region && params.region !== "all") {
-    list = list.filter((a) => a.sourceCategory === params.region);
+    if (params.region === "south_asia") {
+      const saRegions = new Set(["bangladesh", "india", "pakistan", "sri_lanka", "nepal"]);
+      list = list.filter((a) => saRegions.has(a.sourceCategory) || a.tags.includes("South Asia"));
+    } else {
+      list = list.filter(
+        (a) =>
+          a.sourceCategory === params.region ||
+          a.country?.toLowerCase() === params.region ||
+          a.tags.some((t) => t.toLowerCase() === params.region)
+      );
+    }
   }
 
   if (params.isBreaking) {

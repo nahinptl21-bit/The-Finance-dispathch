@@ -18,6 +18,7 @@ import {
   Check,
   Building2,
   Lightbulb,
+  FileText,
 } from "lucide-react";
 import type { NewsArticle, AISummary } from "../types.js";
 import { BriefingSpeaker } from "../utils/audio.js";
@@ -27,6 +28,7 @@ interface Props {
   onClose: () => void;
   isBookmarked: boolean;
   onToggleBookmark: (article: NewsArticle) => void;
+  onAddNote?: (article: NewsArticle) => void;
 }
 
 export const ArticleModal: React.FC<Props> = ({
@@ -34,6 +36,7 @@ export const ArticleModal: React.FC<Props> = ({
   onClose,
   isBookmarked,
   onToggleBookmark,
+  onAddNote,
 }) => {
   if (!article) return null;
 
@@ -244,6 +247,18 @@ export const ArticleModal: React.FC<Props> = ({
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
               <span className="hidden sm:inline">{copied ? "Copied" : "Share"}</span>
             </button>
+
+            {/* Research Note button */}
+            {onAddNote && (
+              <button
+                onClick={() => onAddNote(article)}
+                title="Save Article to Analyst Research Notes"
+                className="p-1.5 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors text-xs flex items-center gap-1 px-2.5"
+              >
+                <FileText className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">Add Note</span>
+              </button>
+            )}
 
             {/* Bookmark */}
             <button

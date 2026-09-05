@@ -9,6 +9,8 @@ import {
   VolumeX,
   Radio,
   ExternalLink,
+  FileText,
+  LineChart,
 } from "lucide-react";
 import type { UserPreferences } from "../types.js";
 
@@ -17,6 +19,9 @@ interface Props {
   onSearchChange: (query: string) => void;
   onOpenNotifications: () => void;
   onOpenBookmarks: () => void;
+  onOpenNotes?: () => void;
+  notesCount?: number;
+  onOpenStocks?: () => void;
   onRefreshFeeds: () => void;
   isRefreshing: boolean;
   unreadNotificationsCount: number;
@@ -32,6 +37,9 @@ export const Header: React.FC<Props> = ({
   onSearchChange,
   onOpenNotifications,
   onOpenBookmarks,
+  onOpenNotes,
+  notesCount = 0,
+  onOpenStocks,
   onRefreshFeeds,
   isRefreshing,
   unreadNotificationsCount,
@@ -163,12 +171,44 @@ export const Header: React.FC<Props> = ({
 
           {/* Right: Quick Action Controls */}
           <div className="flex items-center gap-2">
+            {/* Realtime Stock Exchange Shortcut */}
+            {onOpenStocks && (
+              <button
+                id="header-stocks-btn"
+                onClick={onOpenStocks}
+                title="Open Real-Time South Asian Stock Exchange"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-xs font-semibold transition-all shadow-xs"
+              >
+                <LineChart className="w-3.5 h-3.5 text-emerald-700" />
+                <span className="hidden lg:inline">Stock Exchange</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+              </button>
+            )}
+
+            {/* Research Notes Tool */}
+            {onOpenNotes && (
+              <button
+                id="header-notes-btn"
+                onClick={onOpenNotes}
+                title="Analyst Research Notes & Dossiers"
+                className="relative flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-[#d9d1c5] bg-white hover:bg-[#f5f1e9] text-[#3c3731] text-xs font-medium transition-all shadow-xs"
+              >
+                <FileText className="w-3.5 h-3.5 text-neutral-700" />
+                <span className="hidden sm:inline">Notes</span>
+                {notesCount > 0 && (
+                  <span className="bg-neutral-900 text-white font-mono text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+                    {notesCount}
+                  </span>
+                )}
+              </button>
+            )}
+
             {/* Sync Feeds Pipeline */}
             <button
               id="header-sync-feeds-btn"
               onClick={onRefreshFeeds}
               disabled={isRefreshing}
-              title="Poll live RSS feeds from Bangladeshi and Global media"
+              title="Poll live RSS feeds from South Asian & Global media wires"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-[#d9d1c5] bg-white hover:bg-[#f5f1e9] text-[#3c3731] text-xs font-medium transition-all shadow-xs disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-amber-600" : ""}`} />
@@ -229,27 +269,27 @@ export const Header: React.FC<Props> = ({
             )}
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-neutral-500 overflow-x-auto w-full sm:w-auto py-1">
+          <div className="flex items-center gap-2 text-xs text-neutral-500 overflow-x-auto w-full sm:w-auto py-1 scrollbar-none">
             <span className="font-semibold text-neutral-700 text-[11px] shrink-0 uppercase tracking-wider">
               Connected Wires:
             </span>
-            <span className="px-2 py-0.5 rounded bg-[#f0eae0] text-neutral-700 text-[11px] shrink-0 font-medium">
-              The Daily Star
+            <span className="px-2 py-0.5 rounded bg-[#f0eae0] text-neutral-800 text-[11px] shrink-0 font-medium">
+              🇧🇩 FE BD & Daily Star
             </span>
-            <span className="px-2 py-0.5 rounded bg-[#f0eae0] text-neutral-700 text-[11px] shrink-0 font-medium">
-              Financial Express BD
+            <span className="px-2 py-0.5 rounded bg-[#f0eae0] text-neutral-800 text-[11px] shrink-0 font-medium">
+              🇮🇳 Mint & Business Standard
             </span>
-            <span className="px-2 py-0.5 rounded bg-[#f0eae0] text-neutral-700 text-[11px] shrink-0 font-medium">
-              TBS News
+            <span className="px-2 py-0.5 rounded bg-[#f0eae0] text-neutral-800 text-[11px] shrink-0 font-medium">
+              🇵🇰 Tribune & BRecorder
             </span>
-            <span className="px-2 py-0.5 rounded bg-[#f0eae0] text-neutral-700 text-[11px] shrink-0 font-medium">
-              Dhaka Tribune
+            <span className="px-2 py-0.5 rounded bg-[#f0eae0] text-neutral-800 text-[11px] shrink-0 font-medium">
+              🇱🇰 The Island
             </span>
-            <span className="px-2 py-0.5 rounded bg-[#f0eae0] text-neutral-700 text-[11px] shrink-0 font-medium">
-              Reuters & CNBC
+            <span className="px-2 py-0.5 rounded bg-[#f0eae0] text-neutral-800 text-[11px] shrink-0 font-medium">
+              🇳🇵 OnlineKhabar
             </span>
-            <span className="px-2 py-0.5 rounded bg-[#f0eae0] text-neutral-700 text-[11px] shrink-0 font-medium">
-              TechCrunch
+            <span className="px-2 py-0.5 rounded bg-[#f0eae0] text-neutral-800 text-[11px] shrink-0 font-medium">
+              🌐 Reuters & Bloomberg
             </span>
           </div>
         </div>
